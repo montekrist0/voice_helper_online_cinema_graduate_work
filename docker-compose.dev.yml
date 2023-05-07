@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  app:
+    image: python:3.10
+    volumes:
+      - ./voice_helper_app/src:/app
+    env_file:
+      - ./.env
+    environment:
+     PYTHONUNBUFFERED: 1
+     PYTHONDONTWRITEBYTECODE: 1
+    restart: unless-stopped
+    networks:
+      - movies_network
+    command: >
+      bash -c "pip install --upgrade pip
+      && pip install --no-cache-dir -r /app/requirements.txt
+      && python /app/main.py"
+    ports:
+      - "8001:8001"
+
+networks:
+  movies_network:
+    external: true
