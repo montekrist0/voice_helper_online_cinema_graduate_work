@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Speech API Demo</title>
+    <style>
+        #result {
+            border: 1px solid black;
+            margin: 10px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+<h1>Web Speech API Demo</h1>
+<button id="start">Start Recognition</button>
+<button id="stop">Stop Recognition</button>
+<div id="result"></div>
+<script>
+    const resultDiv = document.getElementById('result');
+    const startButton = document.getElementById('start');
+    const stopButton = document.getElementById('stop');
+
+    const recognition = new window.webkitSpeechRecognition();
+    recognition.lang = 'ru-RU';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let finalTranscript = '';
+
+    recognition.onresult = (event) => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + ' ';
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+        resultDiv.innerHTML = finalTranscript + '<i style="color:grey">' + interimTranscript + '</i>';
+
+        if (event.results[event.results.length - 1].isFinal) {
+            fetch('https://example.com/api', {
+                method: 'POST',
+                body: JSON.stringify({text: finalTranscript}),
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                console.log('Data sent successfully.');
+            })
+            .catch(error => {
+                console.error('There was a problem with sending data: ' + error.message);
+            });
+            finalTranscript = '';
+        }
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Recognition error:', event.error);
+    };
+
+    startButton.onclick = () => {
+        recognition.start();
+        console.log('Recognition started.');
+    };
+
+    stopButton.onclick = () => {
+        recognition.stop();
+        console.log('Recognition stopped.');
+    };
+</script>
+</body>
+</html>
