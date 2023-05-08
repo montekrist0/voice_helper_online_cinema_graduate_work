@@ -11,4 +11,5 @@ router = APIRouter()
 @router.post('/', summary='Сообщение от помощника')
 async def receiving_message(data: Message,
                             command_handler: CommandHandler = Depends(get_command_handler)):
-    print(data)
+
+    await command_handler.handle(data.dict()['text'])

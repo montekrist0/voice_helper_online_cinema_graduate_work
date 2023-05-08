@@ -1,5 +1,6 @@
 from functools import lru_cache
 
+from fuzzywuzzy import fuzz
 from motor.motor_asyncio import AsyncIOMotorCollection
 import orjson
 
@@ -12,20 +13,26 @@ class CommandHandler:
         self.collection = collection
         self.commands: dict | None = None
 
-    async def handle(self):
+    async def handle(self, user_txt):
         await self.get_actual_commands()
+        await self.recognize_cmd(user_txt)
 
     async def get_actual_commands(self):
         commands = await self.collection.find_one()
-        self.commands = orjson.loads(commands)
+        commands.pop('_id')
+        self.commands = commands
 
-    async def recognize_cmd(self, user_cmd):
-        result = {'user_cmd': user_cmd,
+    async def recognize_cmd(self, user_txt):
+        result = {'user_txt': user_txt,
                   'discovered_cmd': '',
                   'percent': 0}
-        for command, texts_comparisons in self.commands.items():
+        for command_name, texts_comparisons in self.commands.items():
             for original_text in texts_comparisons:
-                pass
+                percent = fuzz.ratio(user_txt, original_text)
+                if percent > result['percent']:
+                    result['discovered_cmd'] = command_name
+                    result['percent'] = percent
+        print(result)
             # for x in v:
             #     vrt = fuzz.ratio(cmd, x)
             #     if vrt > RC['percent']:
