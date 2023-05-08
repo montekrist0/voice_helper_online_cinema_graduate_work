@@ -1,6 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
 
+from db.clients import mongo
 from view.api import render, receiving
 
 app = FastAPI(
@@ -17,12 +18,12 @@ app.include_router(receiving.router, prefix='/api/v1/message', tags=['Message'])
 
 @app.on_event('startup')
 async def startup():
-    pass
+    mongo.client = mongo.create_mongo_client()
 
 
 @app.on_event('shutdown')
 def shutdown():
-    pass
+    mongo.client.close()
 
 
 if __name__ == '__main__':
