@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     mongo_host: str = Field(default='localhost')
     mongo_port: int = Field(default='27017')
     mongo_db: str = Field(default='voice_helper')
-    mongo_collection_commands = 'commands'
+    mongo_collection_cmd = 'commands'
+    mongo_collection_tbr = 'to_be_removed'
 
 
 settings = Settings()
