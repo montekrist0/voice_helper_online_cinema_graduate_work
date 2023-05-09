@@ -2,7 +2,6 @@ from functools import lru_cache
 
 from fuzzywuzzy import fuzz
 from motor.motor_asyncio import AsyncIOMotorDatabase
-import orjson
 
 from core.configs import settings
 from db.clients.mongo import get_mongo_client
@@ -17,8 +16,8 @@ class CommandHandler:
     async def handle(self, user_txt):
         await self.get_actual_commands()
         await self.get_actual_tbr()
-        user_txt = await self.cleaning_user_txt(user_txt)
-        parse_object = await self.recognize_cmd(user_txt)
+        after_cleaning_user_txt = await self.cleaning_user_txt(user_txt)
+        parse_object = await self.recognize_cmd(after_cleaning_user_txt)
         print(parse_object)
 
     async def get_actual_commands(self):
@@ -40,25 +39,29 @@ class CommandHandler:
             user_txt = user_txt.replace(word, "").strip()
         return user_txt
 
-    async def recognize_cmd(self, user_txt):
-        parse_object = {'user_txt': user_txt,
+    async def recognize_cmd(self, after_cleaning_user_txt):
+        parse_object = {'after_cleaning_user_txt': after_cleaning_user_txt,
                         'discovered_cmd': '',
                         'original_txt': '',
                         'key_word': '',
                         'percent': 0}
         for command_name, texts_comparisons in self.commands.items():
             for original_text in texts_comparisons:
-                percent = fuzz.ratio(user_txt, original_text)
+                percent = fuzz.ratio(after_cleaning_user_txt, original_text)
                 if percent > parse_object['percent']:
                     parse_object['discovered_cmd'] = command_name
                     parse_object['original_txt'] = original_text
                     parse_object['percent'] = percent
+        if parse_object['percent'] <= 60:
+            parse_object['discovered_cmd'] = 'unknown'
         parse_object = await self.recognize_key_word(parse_object)
         return parse_object
 
     @staticmethod
     async def recognize_key_word(parse_object: dict):
-        parse_object['key_word'] = parse_object['user_txt'].replace(parse_object['original_txt'], "").strip()
+        for user_word in parse_object['after_cleaning_user_txt'].split():
+            if user_word not in parse_object['original_txt']:
+                parse_object['key_word'] += user_word if len(parse_object['key_word']) < 0 else f' {user_word}'
         return parse_object
 
 
@@ -66,6 +69,4 @@ class CommandHandler:
 def get_command_handler():
     client = get_mongo_client()
     db = client[settings.mongo_db]
-    # collection_cmd = db[settings.mongo_collection_cmd]
-    # collection_tbr = db[settings.mongo_collection_tbr]
     return CommandHandler(db)
