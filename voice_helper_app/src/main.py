@@ -1,7 +1,7 @@
 import uvicorn
 from fastapi import FastAPI
 
-from db.clients import mongo
+from db.clients import mongo, redis
 from view.api import render, receiving
 
 app = FastAPI(
@@ -19,11 +19,13 @@ app.include_router(receiving.router, prefix='/api/v1/message', tags=['Message'])
 @app.on_event('startup')
 async def startup():
     mongo.client = mongo.create_mongo_client()
+    redis.redis_message = redis.create_redis_message()
 
 
 @app.on_event('shutdown')
 def shutdown():
     mongo.client.close()
+    redis.redis_message.close()
 
 
 if __name__ == '__main__':

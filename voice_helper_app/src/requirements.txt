@@ -6,3 +6,4 @@ orjson==3.8.12
 python-Levenshtein==0.21.0
 fuzzywuzzy==0.18.0
 websockets==11.0.3
+aioredis==2.0.1

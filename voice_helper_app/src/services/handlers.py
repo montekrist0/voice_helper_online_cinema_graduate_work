@@ -16,21 +16,22 @@ class CommandHandler:
         self.commands: dict | None = None
         self.to_be_removed: list | None = None
 
-    async def handle(self, user_txt):
+    #TODO user_id должен браться из токена авторизации
+    async def handle(self, user_txt, user_id=123123):
         parse_object = {'before_cleaning_user_txt': user_txt,
                         'after_cleaning_user_txt': '',
                         'discovered_cmd': '',
                         'final_cmd': '',
                         'original_txt': '',
                         'key_word': '',
+                        'answer': '',
                         'percent': 0}
         await self.update_cmd_tbr()
         parse_object['after_cleaning_user_txt'] = self.cleaning_user_txt(user_txt)
         parse_object = self.recognize_cmd(parse_object)
         parse_object = self.recognize_key_word(parse_object)
-        print(parse_object)
-        result = self.execute_cmd(parse_object)
-        return result
+        parse_object = self.execute_cmd(parse_object)
+        return parse_object['answer']
 
     async def update_cmd_tbr(self):
         delta_update = timedelta(hours=settings.delta_update_cmd_tbr)
@@ -73,38 +74,39 @@ class CommandHandler:
             parse_object['final_cmd'] = 'ask_again'
         return parse_object
 
-    def execute_cmd(self, parse_object: dict) -> str:
+    def execute_cmd(self, parse_object: dict):
         cmd = parse_object['final_cmd']
         match cmd:
             case 'author':
                 film = parse_object['key_word']
-                return f'Тут мы узнаем какой автор создал {film}'
+                parse_object['answer'] = f'Тут мы узнаем какой автор создал {film}'
             case 'actor':
                 actor = parse_object['key_word']
-                return f'Тут мы узнаем в каком фильме играл актер {actor}'
+                parse_object['answer'] = f'Тут мы узнаем в каком фильме играл актер {actor}'
             case 'how_many_films':
                 author = parse_object['key_word']
-                return f'Тут мы узнаем сколько фильмов у {author}'
+                parse_object['answer'] = f'Тут мы узнаем сколько фильмов у {author}'
             case 'time_film':
                 film = parse_object['key_word']
-                return f'Тут му узнаем сколько длится фильм {film}'
+                parse_object['answer'] = f'Тут му узнаем сколько длится фильм {film}'
             case 'top_films':
-                return f'Тут будет перечисление 10 топ фильмов'
+                parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов'
             case 'top_films_genre':
                 genre = parse_object['key_word']
-                return f'Тут будет перечисление 10 топ фильмов в жанре {genre}'
+                parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов в жанре {genre}'
             case 'top_films_person':
                 actor = parse_object['key_word']
-                return f'Тут будет перечисление 10 топ фильмов с актером {actor}'
+                parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов с актером {actor}'
             case 'film_genre':
                 film = parse_object['key_word']
-                return f'Тут будет в каком жанре снят фильм {film}'
+                parse_object['answer'] = f'Тут будет в каком жанре снят фильм {film}'
             case 'top_actor':
-                return f'Тут будет ответ какой актер самый популярный'
+                parse_object['answer'] = f'Тут будет ответ какой актер самый популярный'
             case 'unknown':
-                return 'Мне неизвестная команда'
+                parse_object['answer'] = 'Мне неизвестная команда'
             case 'ask_again':
-                return 'Тут будет задан уточняющий вопрос.'
+                parse_object['answer'] = 'Тут будет задан уточняющий вопрос.'
+        return parse_object
 
     @staticmethod
     def recognize_key_word(parse_object: dict) -> dict:
