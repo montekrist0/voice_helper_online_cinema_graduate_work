@@ -19,6 +19,7 @@ class CommandHandler:
         after_cleaning_user_txt = await self.cleaning_user_txt(user_txt)
         parse_object = await self.recognize_cmd(after_cleaning_user_txt)
         print(parse_object)
+        return parse_object
 
     async def get_actual_commands(self):
         collection = self.db[settings.mongo_collection_cmd]
@@ -62,6 +63,7 @@ class CommandHandler:
         for user_word in parse_object['after_cleaning_user_txt'].split():
             if user_word not in parse_object['original_txt']:
                 parse_object['key_word'] += user_word if len(parse_object['key_word']) < 0 else f' {user_word}'
+        parse_object['key_word'] = parse_object['key_word'].strip()
         return parse_object
 
 
