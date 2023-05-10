@@ -25,4 +25,4 @@ async def websocket_endpoint(websocket: WebSocket,
         user_txt = await websocket.receive_text()
         user_txt = orjson.loads(user_txt)
         result = await command_handler.handle(user_txt)
-        await websocket.send_text(f"{result['key_word']}")
+        await websocket.send_text(f"{result}")

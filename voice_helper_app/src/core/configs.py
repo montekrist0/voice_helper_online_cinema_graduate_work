@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     mongo_db: str = Field(default='voice_helper')
     mongo_collection_cmd = 'commands'
     mongo_collection_tbr = 'to_be_removed'
+    delta_update_cmd_tbr = 3
 
 
 settings = Settings()
