@@ -31,6 +31,70 @@ services:
     ports:
       - "6379:6379"
 
+  vh_app:
+    image: python:3.10
+    volumes:
+      - ./voice_helper_app/src:/app
+    env_file:
+      - ./.env
+    environment:
+      PYTHONUNBUFFERED: 1
+      PYTHONDONTWRITEBYTECODE: 1
+    restart: unless-stopped
+    command: >
+      bash -c "pip install --upgrade pip
+      && pip install --no-cache-dir -r /app/requirements.txt
+      && python /app/main.py"
+    ports:
+      - "8001:8001"
+    depends_on:
+      vh_redis_message:
+        condition: service_healthy
+
+
+
+  vh_mongo_db:
+    image: mongo:6.0.5-jammy
+    restart: always
+    expose:
+      - "27017"
+    env_file:
+      - ./.env
+    volumes:
+      - ./db/mongo:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: [ "CMD", "mongo", "--eval", "db.runCommand('ping').ok" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    ports:
+      - "27017:27017"
+
+  vh_mongo_express:
+    image: mongo-express:1.0.0-alpha
+    restart: always
+    expose:
+      - "8081"
+    environment:
+      ME_CONFIG_MONGODB_SERVER: vh_mongo_db
+      ME_CONFIG_MONGODB_PORT: 27017
+    ports:
+      - "8081:8081"
+
+  vh_redis_message:
+    image: redis:7.0.7
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - ./db/redis_message:/data
+    ports:
+      - "6389:6379"
+
+
   elastic:
     image: elasticsearch:8.5.3
     environment:

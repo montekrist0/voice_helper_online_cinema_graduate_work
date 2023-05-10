@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Web Speech API Demo</title>
+    <style>
+        #result {
+            border: 1px solid black;
+            margin: 10px;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+<h1>Web Speech API Demo</h1>
+<button id="start">Start Recognition</button>
+<button id="stop">Stop Recognition</button>
+<div id="result"></div>
+<script>
+    const resultDiv = document.getElementById('result');
+    const startButton = document.getElementById('start');
+    const stopButton = document.getElementById('stop');
+
+    const recognition = new window.webkitSpeechRecognition();
+    recognition.lang = 'ru-RU';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let finalTranscript = '';
+    let isListening = false;
+    let socket = null;
+
+    function startSocket() {
+        socket = new WebSocket('ws://localhost:8001/api/v1/message/');
+
+        socket.onopen = (event) => {
+            console.log('WebSocket opened.');
+        };
+
+        socket.onmessage = (event) => {
+            console.log('Message received from server:', event.data);
+            const utterance = new SpeechSynthesisUtterance(event.data);
+            utterance.lang = 'ru-RU';
+            speechSynthesis.speak(utterance);
+            utterance.onend = () => {
+                console.log('Speech synthesis finished.');
+                recognition.start();
+                isListening = true;
+            };
+        };
+
+        socket.onerror = (event) => {
+            console.error('WebSocket error:', event);
+        };
+
+        socket.onclose = (event) => {
+            console.log('WebSocket closed:', event);
+            setTimeout(startSocket, 1000);
+        };
+    }
+
+    startSocket();
+
+    recognition.onresult = (event) => {
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+                finalTranscript += transcript + ' ';
+            } else {
+                interimTranscript += transcript;
+            }
+        }
+        resultDiv.innerHTML = finalTranscript + '<i style="color:grey">' + interimTranscript + '</i>';
+
+        if (event.results[event.results.length - 1].isFinal) {
+            socket.send(JSON.stringify(finalTranscript));
+            finalTranscript = '';
+            isListening = false;
+            recognition.stop();
+        }
+    };
+
+    recognition.onerror = (event) => {
+        console.error('Recognition error:', event.error);
+    };
+
+    startButton.onclick = () => {
+        if (!isListening) {
+            recognition.start();
+            isListening = true;
+            console.log('Recognition started.');
+        }
+    };
+
+    stopButton.onclick = () => {
+        if (isListening) {
+            recognition.stop();
+            isListening = false;
+            console.log('Recognition stopped.');
+        }
+    };
+</script>
+</body>
+</html>

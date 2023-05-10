@@ -166,7 +166,6 @@ useful_commands.md
 tes.sql
 garbage.py
 queris.sql
-.env.example(2)
 *.csv
 dump_prepare.sh
 dump.sql
