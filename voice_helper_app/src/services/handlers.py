@@ -17,7 +17,7 @@ class CommandHandler:
         self.to_be_removed: list | None = None
 
     #TODO user_id должен браться из токена авторизации
-    async def handle(self, user_txt, user_id=123123):
+    async def handle(self, user_txt):
         parse_object = {'before_cleaning_user_txt': user_txt,
                         'after_cleaning_user_txt': '',
                         'discovered_cmd': '',
@@ -68,7 +68,7 @@ class CommandHandler:
                     parse_object['final_cmd'] = command_name
                     parse_object['original_txt'] = original_text
                     parse_object['percent'] = percent
-        if 40 <= parse_object['percent'] < 50:
+        if parse_object['percent'] <= 49:
             parse_object['final_cmd'] = 'unknown'
         if 50 <= parse_object['percent'] < 60:
             parse_object['final_cmd'] = 'ask_again'
