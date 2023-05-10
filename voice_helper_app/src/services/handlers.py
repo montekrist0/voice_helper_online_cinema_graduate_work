@@ -20,6 +20,7 @@ class CommandHandler:
         parse_object = {'before_cleaning_user_txt': user_txt,
                         'after_cleaning_user_txt': '',
                         'discovered_cmd': '',
+                        'final_cmd': '',
                         'original_txt': '',
                         'key_word': '',
                         'percent': 0}
@@ -27,6 +28,7 @@ class CommandHandler:
         parse_object['after_cleaning_user_txt'] = self.cleaning_user_txt(user_txt)
         parse_object = self.recognize_cmd(parse_object)
         parse_object = self.recognize_key_word(parse_object)
+        print(parse_object)
         result = self.execute_cmd(parse_object)
         return result
 
@@ -62,16 +64,17 @@ class CommandHandler:
                 percent = fuzz.ratio(parse_object['after_cleaning_user_txt'], original_text)
                 if percent > parse_object['percent']:
                     parse_object['discovered_cmd'] = command_name
+                    parse_object['final_cmd'] = command_name
                     parse_object['original_txt'] = original_text
                     parse_object['percent'] = percent
         if 40 <= parse_object['percent'] < 50:
-            parse_object['discovered_cmd'] = 'unknown'
+            parse_object['final_cmd'] = 'unknown'
         if 50 <= parse_object['percent'] < 60:
-            parse_object['discovered_cmd'] = 'ask_again'
+            parse_object['final_cmd'] = 'ask_again'
         return parse_object
 
     def execute_cmd(self, parse_object: dict) -> str:
-        cmd = parse_object['discovered_cmd']
+        cmd = parse_object['final_cmd']
         match cmd:
             case 'author':
                 film = parse_object['key_word']

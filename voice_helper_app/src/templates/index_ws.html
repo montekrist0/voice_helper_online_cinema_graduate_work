@@ -27,7 +27,7 @@
     recognition.interimResults = true;
 
     let finalTranscript = '';
-
+    let isListening = false;
     let socket = null;
 
     function startSocket() {
@@ -38,17 +38,15 @@
         };
 
         socket.onmessage = (event) => {
-        console.log('Message received from server:', event.data);
-        const utterance = new SpeechSynthesisUtterance(event.data);
-        utterance.lang = 'ru-RU';
-        utterance.onend = () => {
-            console.log('Speech synthesis finished.');
-            setTimeout(() => {
+            console.log('Message received from server:', event.data);
+            const utterance = new SpeechSynthesisUtterance(event.data);
+            utterance.lang = 'ru-RU';
+            speechSynthesis.speak(utterance);
+            utterance.onend = () => {
+                console.log('Speech synthesis finished.');
                 recognition.start();
-                console.log('Recognition started.');
-            }, 5000);
-        };
-        speechSynthesis.speak(utterance);
+                isListening = true;
+            };
         };
 
         socket.onerror = (event) => {
@@ -78,6 +76,8 @@
         if (event.results[event.results.length - 1].isFinal) {
             socket.send(JSON.stringify(finalTranscript));
             finalTranscript = '';
+            isListening = false;
+            recognition.stop();
         }
     };
 
@@ -86,13 +86,19 @@
     };
 
     startButton.onclick = () => {
-        recognition.start();
-        console.log('Recognition started.');
+        if (!isListening) {
+            recognition.start();
+            isListening = true;
+            console.log('Recognition started.');
+        }
     };
 
     stopButton.onclick = () => {
-        recognition.stop();
-        console.log('Recognition stopped.');
+        if (isListening) {
+            recognition.stop();
+            isListening = false;
+            console.log('Recognition stopped.');
+        }
     };
 </script>
 </body>
