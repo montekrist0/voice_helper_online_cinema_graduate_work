@@ -97,8 +97,8 @@ class CommandHandler:
                 actor = parse_object['key_word']
                 return f'Тут будет перечисление 10 топ фильмов с актером {actor}'
             case 'film_genre':
-                key_word = parse_object['key_word']
-                return f'тут не понятно пока {key_word}'
+                film = parse_object['key_word']
+                return f'Тут будет в каком жанре снят фильм {film}'
             case 'top_actor':
                 return f'Тут будет ответ какой актер самый популярный'
             case 'unknown':
