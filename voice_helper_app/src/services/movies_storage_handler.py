@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from elasticsearch import AsyncElasticsearch, NotFoundError
 from typing import List
+from pprint import pprint
 
 
 class DBSeeker(ABC):
@@ -21,6 +22,10 @@ class DBSeeker(ABC):
         pass
 
     @abstractmethod
+    async def get_top_films(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
     async def get_top_n_films_in_genre(self, *args, **kwargs):
         pass
 
@@ -34,6 +39,18 @@ class DBSeeker(ABC):
 
     @abstractmethod
     async def get_top_actor(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    async def get_film_description(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    async def get_film_year(self, *args, **kwargs):
+        pass
+
+    @abstractmethod
+    async def get_film_rating(self, *args, **kwargs):
         pass
 
 
@@ -45,28 +62,52 @@ class ElasticSeeker(DBSeeker):
         self.genre_index = 'genres'
 
     async def get_film_author(self, movie_title: str) -> str:
-        query = {
-            "query": {
-                "multi_match": {
-                  "query": movie_title,
-                  "fields": ["title_*"]
-                }
-              },
-            "size": 1
-        }
-        query_result = self.get_by_query(index=self.movies_index, query=query)
+        """Функция возвращает создателей (режиссеров и сценаристов) фильма по названию."""
+        max_director_count = 2
+        max_writer_count = 5
+
+        query = {'query': {'multi_match': {'query': movie_title, 'fields': ['title_*']}}, 'size': 1}
+        query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
+        response = 'Авторы фильма мне неизвестны.'
+
         if query_result:
-            print(query_result)
+            film_directors: List[dict] | None = query_result[-1].get('directors')
+            film_writers: List[dict] | None = query_result[-1].get('writers')
 
-        return "Some author"
+            if film_directors:
+                response = 'Режиссеры фильма: '
+                response += ', '.join(
+                    [
+                        director.get('full_name_ru') or director.get('full_name_en')
+                        for director in film_directors[:max_director_count]
+                    ]
+                )
 
-    async def get_actor_films(self, *args, **kwargs):
+            if film_writers:
+                response += '. Сценаристы фильма: '
+                response += ', '.join(
+                    [
+                        writer.get('full_name_ru') or writer.get('full_name_en')
+                        for writer in film_writers[:max_writer_count]
+                    ]
+                )
+
+            pprint(response)
+        return response
+
+    async def get_actor_films(self, actor: str):
+        """Функция возвращает фильмы с указанным актером"""
         pass
 
-    async def get_actor_films_count(self, *args, **kwargs):
+    # TODO: добавить докстринги и тайпхинтинги в методы
+
+    async def get_actor_films_count(self, actor: str):
         pass
 
-    async def get_film_length(self, *args, **kwargs):
+    async def get_film_length(self, movie_title: str):
+        pass
+
+    async def get_top_films(self, *args, **kwargs):
         pass
 
     async def get_top_n_films_in_genre(self, *args, **kwargs):
@@ -81,6 +122,15 @@ class ElasticSeeker(DBSeeker):
     async def get_top_actor(self, *args, **kwargs):
         pass
 
+    async def get_film_description(self, *args, **kwargs):
+        pass
+
+    async def get_film_year(self, *args, **kwargs):
+        pass
+
+    async def get_film_rating(self, *args, **kwargs):
+        pass
+
     async def get_by_query(self, index: str, query: dict) -> List[dict] | None:
         try:
             data = await self.client.search(index=index, body=query)
@@ -89,3 +139,7 @@ class ElasticSeeker(DBSeeker):
         except NotFoundError:
             return None
 
+    # TODO:
+    #  - список фильмов, созданных таким-то сценаристом;
+    #  - год создания фильма/сериала
+    #  - какой рейтинг у фильма

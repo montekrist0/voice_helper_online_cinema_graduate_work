@@ -1,5 +1,4 @@
-from datetime import (datetime,
-                      timedelta)
+from datetime import datetime, timedelta
 from functools import lru_cache
 
 from fuzzywuzzy import fuzz
@@ -13,6 +12,8 @@ from services.movies_storage_handler import ElasticSeeker
 from fastapi import Depends
 
 
+# TODO: провести рефакторинг класса CommandHandler
+
 class CommandHandler:
     def __init__(self, commands_db: AsyncIOMotorDatabase, es_client: AsyncElasticsearch):
         self.db = commands_db
@@ -21,21 +22,24 @@ class CommandHandler:
         self.to_be_removed: list | None = None
         self.movies_db = ElasticSeeker(es_client)
 
-    #TODO user_id должен браться из токена авторизации
-    async def handle(self, user_txt):
-        parse_object = {'before_cleaning_user_txt': user_txt,
-                        'after_cleaning_user_txt': '',
-                        'discovered_cmd': '',
-                        'final_cmd': '',
-                        'original_txt': '',
-                        'key_word': '',
-                        'answer': '',
-                        'percent': 0}
+    async def handle_user_query(self, user_txt):
+        parse_object = {
+            'before_cleaning_user_txt': user_txt,
+            'after_cleaning_user_txt': '',
+            'discovered_cmd': '',
+            'final_cmd': '',
+            'original_txt': '',
+            'key_word': '',
+            'answer': '',
+            'percent': 0,
+        }
+        print(user_txt)
         await self.update_cmd_tbr()
         parse_object['after_cleaning_user_txt'] = self.cleaning_user_txt(user_txt)
         parse_object = self.recognize_cmd(parse_object)
         parse_object = self.recognize_key_word(parse_object)
-        parse_object = self.execute_cmd(parse_object)
+        parse_object = await self.execute_cmd(parse_object)
+        print(parse_object['answer'])
         return parse_object['answer']
 
     async def update_cmd_tbr(self):
@@ -79,53 +83,79 @@ class CommandHandler:
             parse_object['final_cmd'] = 'ask_again'
         return parse_object
 
-    def execute_cmd(self, parse_object: dict):
-        cmd = parse_object['final_cmd']
-        match cmd:
-            case 'author':
-                film = parse_object['key_word']
-                parse_object['answer'] = self.movies_db.get_film_author(film)
-                # parse_object['answer'] = f'Тут мы узнаем какой автор создал {film}'
-            case 'actor':
-                actor = parse_object['key_word']
-                parse_object['answer'] = f'Тут мы узнаем в каком фильме играл актер {actor}'
-            case 'how_many_films':
-                author = parse_object['key_word']
-                parse_object['answer'] = f'Тут мы узнаем сколько фильмов у {author}'
-            case 'time_film':
-                film = parse_object['key_word']
-                parse_object['answer'] = f'Тут му узнаем сколько длится фильм {film}'
-            case 'top_films':
-                parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов'
-            case 'top_films_genre':
-                genre = parse_object['key_word']
-                parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов в жанре {genre}'
-            case 'top_films_person':
-                actor = parse_object['key_word']
-                parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов с актером {actor}'
-            case 'film_genre':
-                film = parse_object['key_word']
-                parse_object['answer'] = f'Тут будет в каком жанре снят фильм {film}'
-            case 'top_actor':
-                parse_object['answer'] = f'Тут будет ответ какой актер самый популярный'
-            case 'unknown':
-                parse_object['answer'] = 'Мне неизвестная команда'
-            case 'ask_again':
-                parse_object['answer'] = 'Тут будет задан уточняющий вопрос.'
+    async def execute_cmd(self, parse_object: dict):
+        command_matrix = {
+            'author': self.movies_db.get_film_author,
+            'actor': self.movies_db.get_actor_films,
+            'how_many_films': self.movies_db.get_actor_films_count,
+            'time_film': self.movies_db.get_film_length,
+            'top_films': self.movies_db.get_top_films,
+            'top_films_genre': self.movies_db.get_top_n_films_in_genre,
+            'top_films_person': self.movies_db.get_actor_top_n_films,
+            'film_genre': self.movies_db.get_film_genre,
+            'top_actor': self.movies_db.get_top_actor,
+            'film_about': self.movies_db.get_film_description,
+        }
+
+        command = parse_object.get('final_cmd')
+        keyword = parse_object.get('key_word')
+        answer = 'К сожалению, команда не распознана... пожалуйста, повторите запрос'
+
+        if command in command_matrix:
+            method = command_matrix.get(command)
+            answer = await method(keyword)
+
+        parse_object['answer'] = answer
         return parse_object
+
+        # match cmd:
+        #     case 'author':
+        #         film = parse_object['key_word']
+        #         parse_object['answer'] = await self.movies_db.get_film_author(film)
+        #         # parse_object['answer'] = f'Тут мы узнаем какой автор создал {film}'
+        #     case 'actor':
+        #         actor = parse_object['key_word']
+        #         parse_object['answer'] = f'Тут мы узнаем в каком фильме играл актер {actor}'
+        #     case 'how_many_films':
+        #         author = parse_object['key_word']
+        #         parse_object['answer'] = f'Тут мы узнаем сколько фильмов у {author}'
+        #     case 'time_film':
+        #         film = parse_object['key_word']
+        #         parse_object['answer'] = f'Тут му узнаем сколько длится фильм {film}'
+        #     case 'top_films':
+        #         parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов'
+        #     case 'top_films_genre':
+        #         genre = parse_object['key_word']
+        #         parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов в жанре {genre}'
+        #     case 'top_films_person':
+        #         actor = parse_object['key_word']
+        #         parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов с актером {actor}'
+        #     case 'film_genre':
+        #         film = parse_object['key_word']
+        #         parse_object['answer'] = f'Тут будет в каком жанре снят фильм {film}'
+        #     case 'top_actor':
+        #         parse_object['answer'] = f'Тут будет ответ какой актер самый популярный'
+        #     case 'film_about':
+        #         film = parse_object['key_word']
+        #         parse_object['answer'] = f'Тут мы узнаем о чем фильм {film}'
+        #     case 'unknown':
+        #         parse_object['answer'] = 'Мне неизвестная команда'
+        #     case 'ask_again':
+        #         parse_object['answer'] = 'Тут будет задан уточняющий вопрос.'
+        # return parse_object
 
     @staticmethod
     def recognize_key_word(parse_object: dict) -> dict:
         for user_word in parse_object['after_cleaning_user_txt'].split():
             if user_word not in parse_object['original_txt']:
-                parse_object['key_word'] += user_word if len(
-                    parse_object['key_word']) < 0 else f' {user_word}'
+                parse_object['key_word'] += user_word if len(parse_object['key_word']) < 0 else f' {user_word}'
         parse_object['key_word'] = parse_object['key_word'].strip()
         return parse_object
 
 
 @lru_cache(maxsize=None)
-def get_command_handler(mongo_client=Depends(get_mongo_client),
-                        elastic_client: AsyncElasticsearch = Depends(get_elastic)):
+def get_command_handler(
+    mongo_client=Depends(get_mongo_client), elastic_client: AsyncElasticsearch = Depends(get_elastic)
+):
     mongo_db = mongo_client[settings.mongo_db]
     return CommandHandler(mongo_db, elastic_client)

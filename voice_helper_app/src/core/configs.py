@@ -1,7 +1,6 @@
 import os
 
-from pydantic import (BaseSettings,
-                      Field)
+from pydantic import BaseSettings, Field
 
 
 class Settings(BaseSettings):
