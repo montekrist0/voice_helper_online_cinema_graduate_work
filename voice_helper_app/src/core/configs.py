@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     redis_message_port: int = Field(default=6379)
     mongo_collection_cmd = 'commands'
     mongo_collection_tbr = 'to_be_removed'
+    elastic_host: str
+    elastic_port: int
 
 
 settings = Settings()

@@ -7,14 +7,19 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from core.configs import settings
 from db.clients.mongo import get_mongo_client
+from db.clients.elastic import get_elastic
+from elasticsearch import AsyncElasticsearch
+from services.movies_storage_handler import ElasticSeeker
+from fastapi import Depends
 
 
 class CommandHandler:
-    def __init__(self, db: AsyncIOMotorDatabase):
-        self.db = db
+    def __init__(self, commands_db: AsyncIOMotorDatabase, es_client: AsyncElasticsearch):
+        self.db = commands_db
         self.last_update_cmd_tbr: datetime | None = None
         self.commands: dict | None = None
         self.to_be_removed: list | None = None
+        self.movies_db = ElasticSeeker(es_client)
 
     #TODO user_id должен браться из токена авторизации
     async def handle(self, user_txt):
@@ -79,7 +84,8 @@ class CommandHandler:
         match cmd:
             case 'author':
                 film = parse_object['key_word']
-                parse_object['answer'] = f'Тут мы узнаем какой автор создал {film}'
+                parse_object['answer'] = self.movies_db.get_film_author(film)
+                # parse_object['answer'] = f'Тут мы узнаем какой автор создал {film}'
             case 'actor':
                 actor = parse_object['key_word']
                 parse_object['answer'] = f'Тут мы узнаем в каком фильме играл актер {actor}'
@@ -119,7 +125,7 @@ class CommandHandler:
 
 
 @lru_cache(maxsize=None)
-def get_command_handler():
-    client = get_mongo_client()
-    db = client[settings.mongo_db]
-    return CommandHandler(db)
+def get_command_handler(mongo_client=Depends(get_mongo_client),
+                        elastic_client: AsyncElasticsearch = Depends(get_elastic)):
+    mongo_db = mongo_client[settings.mongo_db]
+    return CommandHandler(mongo_db, elastic_client)
