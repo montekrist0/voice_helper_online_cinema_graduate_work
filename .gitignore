@@ -170,3 +170,4 @@ queris.sql
 dump_prepare.sh
 dump.sql
 dump.rdb
+/queries_es

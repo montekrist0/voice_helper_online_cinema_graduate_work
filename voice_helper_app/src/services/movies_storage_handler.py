@@ -1,3 +1,4 @@
+"""Модуль, описывающий класс с методами для поиска в БД контента онлайн-кинотеатра."""
 from abc import ABC, abstractmethod
 from elasticsearch import AsyncElasticsearch, NotFoundError
 from typing import List
@@ -5,6 +6,7 @@ from pprint import pprint
 
 
 class DBSeeker(ABC):
+    """Базовый для поиска объектов онлайн-кинотеатра."""
     @abstractmethod
     async def get_film_author(self, *args, **kwargs):
         pass
@@ -55,6 +57,7 @@ class DBSeeker(ABC):
 
 
 class ElasticSeeker(DBSeeker):
+    """Класс для поиска объектов онлайн-кинотеатра в базе ElasticSearch."""
     def __init__(self, es_client: AsyncElasticsearch):
         self.client = es_client
         self.movies_index = 'movies'
@@ -95,43 +98,111 @@ class ElasticSeeker(DBSeeker):
             pprint(response)
         return response
 
-    async def get_actor_films(self, actor: str):
-        """Функция возвращает фильмы с указанным актером"""
+    async def get_person_id(self, actor: str) -> str:
+        query = {
+            "query": {
+                "multi_match": {
+                    "query": actor,
+                    "fields": ["full_name_*"],
+                    "fuzziness": "AUTO",
+                    "prefix_length": 1
+                }
+            },
+            "size": 1
+        }
+
+        query_result: List[dict] | None = await self.get_by_query(index=self.person_index, query=query)
+        if query_result:
+            return query_result[-1].get('')
+
+    async def get_actor_films(self, actor: str) -> str:
+        """Функция возвращает фильмы с указанным актером."""
+        max_film_count = 5
+        actor_id = await self.get_person_id(actor)
+
+        if not actor_id:
+            return f"Не удалось найти актера {actor}"
+
+        query = {
+            "query": {
+                "nested": {
+                    "path": "actors",
+                    "query": {
+                        "bool": {
+                            "must": [
+                                {
+                                    "term": {
+                                        "actors.id": actor_id
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            },
+            "size": 5,
+            "sort": [
+                {
+                    "rating_imdb": {
+                        "order": "desc"
+                    }
+                }
+            ]
+        }
+
+        query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
+
+        if query_result:
+            response = f"Топ фильмы с актером {actor}: "
+            response += ', '.join([
+                film.get('title_ru') for film in query_result[:max_film_count]
+            ])
+            return response
+
+        return f"Мне не удалось найти фильмов с участием {actor}"
+
+    async def get_actor_films_count(self, actor: str) -> str:
+        """Функция возвращает количество фильмов с указанным человеком (сценаристом, режиссером, актером)"""
         pass
 
-    # TODO: добавить докстринги и тайпхинтинги в методы
-
-    async def get_actor_films_count(self, actor: str):
+    async def get_film_length(self, movie_title: str) -> str:
+        """Функция возвращает продолжительность фильма в минутах."""
         pass
 
-    async def get_film_length(self, movie_title: str):
+    async def get_top_films(self, *args, **kwargs) -> str:
+        """Функция возвращает топ-N фильмом по рейтингу."""
         pass
 
-    async def get_top_films(self, *args, **kwargs):
+    async def get_top_n_films_in_genre(self, *args, **kwargs) -> str:
+        """Функция возвращает топ-N фильмов в переданном жанре."""
         pass
 
-    async def get_top_n_films_in_genre(self, *args, **kwargs):
+    async def get_actor_top_n_films(self, *args, **kwargs) -> str:
+        """Функция возвращает топ-N фильмов с переданным актером (сценаристом, режиссером)."""
         pass
 
-    async def get_actor_top_n_films(self, *args, **kwargs):
+    async def get_film_genre(self, *args, **kwargs) -> str:
+        """Функция возвращает жанры, в котором снят фильм."""
         pass
 
-    async def get_film_genre(self, *args, **kwargs):
+    async def get_top_actor(self, *args, **kwargs) -> str:
+        """Функция возвращает актера с самым большим числом фильмов."""
         pass
 
-    async def get_top_actor(self, *args, **kwargs):
+    async def get_film_description(self, *args, **kwargs) -> str:
+        """Функция возвращает описание фильма."""
         pass
 
-    async def get_film_description(self, *args, **kwargs):
+    async def get_film_year(self, *args, **kwargs) -> str:
+        """Функция возвращает год создания фильма или сериала."""
         pass
 
-    async def get_film_year(self, *args, **kwargs):
-        pass
-
-    async def get_film_rating(self, *args, **kwargs):
+    async def get_film_rating(self, *args, **kwargs) -> str:
+        """Функция возвращает рейтинг фильма или сериала."""
         pass
 
     async def get_by_query(self, index: str, query: dict) -> List[dict] | None:
+        """Функция для выполнения переданного в нее запроса ElasticSearch."""
         try:
             data = await self.client.search(index=index, body=query)
             return [item['_source'] for item in data['hits']['hits']]
