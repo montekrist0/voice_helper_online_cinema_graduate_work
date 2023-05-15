@@ -13,6 +13,7 @@ from fastapi import Depends
 
 
 # TODO: провести рефакторинг класса CommandHandler
+# TODO: добавить тайп-хинтинги и докстринги
 
 class CommandHandler:
     def __init__(self, commands_db: AsyncIOMotorDatabase, es_client: AsyncElasticsearch):
@@ -62,11 +63,9 @@ class CommandHandler:
         self.to_be_removed = tbr['text']
 
     def cleaning_user_txt(self, user_txt: str) -> str:
-        for word in user_txt.split():
-            user_txt = user_txt.replace(word, word.lower()).strip()
-        for word in self.to_be_removed:
-            user_txt = user_txt.replace(word, "").strip()
-        return user_txt
+        return ' '.join([
+            word.lower() for word in user_txt.split() if word not in self.to_be_removed
+        ]).strip()
 
     def recognize_cmd(self, parse_object: dict) -> dict:
         for command_name, texts_comparisons in self.commands.items():
@@ -87,7 +86,7 @@ class CommandHandler:
         command_matrix = {
             'author': self.movies_db.get_film_author,
             'actor': self.movies_db.get_actor_films,
-            'how_many_films': self.movies_db.get_actor_films_count,
+            'how_many_films': self.movies_db.get_director_films_count,
             'time_film': self.movies_db.get_film_length,
             'top_films': self.movies_db.get_top_films,
             'top_films_genre': self.movies_db.get_top_n_films_in_genre,
@@ -108,48 +107,14 @@ class CommandHandler:
         parse_object['answer'] = answer
         return parse_object
 
-        # match cmd:
-        #     case 'author':
-        #         film = parse_object['key_word']
-        #         parse_object['answer'] = await self.movies_db.get_film_author(film)
-        #         # parse_object['answer'] = f'Тут мы узнаем какой автор создал {film}'
-        #     case 'actor':
-        #         actor = parse_object['key_word']
-        #         parse_object['answer'] = f'Тут мы узнаем в каком фильме играл актер {actor}'
-        #     case 'how_many_films':
-        #         author = parse_object['key_word']
-        #         parse_object['answer'] = f'Тут мы узнаем сколько фильмов у {author}'
-        #     case 'time_film':
-        #         film = parse_object['key_word']
-        #         parse_object['answer'] = f'Тут му узнаем сколько длится фильм {film}'
-        #     case 'top_films':
-        #         parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов'
-        #     case 'top_films_genre':
-        #         genre = parse_object['key_word']
-        #         parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов в жанре {genre}'
-        #     case 'top_films_person':
-        #         actor = parse_object['key_word']
-        #         parse_object['answer'] = f'Тут будет перечисление 10 топ фильмов с актером {actor}'
-        #     case 'film_genre':
-        #         film = parse_object['key_word']
-        #         parse_object['answer'] = f'Тут будет в каком жанре снят фильм {film}'
-        #     case 'top_actor':
-        #         parse_object['answer'] = f'Тут будет ответ какой актер самый популярный'
-        #     case 'film_about':
-        #         film = parse_object['key_word']
-        #         parse_object['answer'] = f'Тут мы узнаем о чем фильм {film}'
-        #     case 'unknown':
-        #         parse_object['answer'] = 'Мне неизвестная команда'
-        #     case 'ask_again':
-        #         parse_object['answer'] = 'Тут будет задан уточняющий вопрос.'
-        # return parse_object
-
     @staticmethod
     def recognize_key_word(parse_object: dict) -> dict:
-        for user_word in parse_object['after_cleaning_user_txt'].split():
-            if user_word not in parse_object['original_txt']:
-                parse_object['key_word'] += user_word if len(parse_object['key_word']) < 0 else f' {user_word}'
-        parse_object['key_word'] = parse_object['key_word'].strip()
+        parse_object['key_word'] = ' '.join(
+            [
+                user_word for user_word in parse_object['after_cleaning_user_txt'].split()
+                if user_word not in parse_object['original_txt']
+            ]
+        ).strip()
         return parse_object
 
 
