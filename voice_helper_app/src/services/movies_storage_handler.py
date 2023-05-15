@@ -7,6 +7,7 @@ from pprint import pprint
 
 class DBSeeker(ABC):
     """Базовый для поиска объектов онлайн-кинотеатра."""
+
     @abstractmethod
     async def get_film_author(self, *args, **kwargs):
         pass
@@ -58,6 +59,7 @@ class DBSeeker(ABC):
 
 class ElasticSeeker(DBSeeker):
     """Класс для поиска объектов онлайн-кинотеатра в базе ElasticSearch."""
+
     def __init__(self, es_client: AsyncElasticsearch):
         self.client = es_client
         self.movies_index = 'movies'
@@ -101,22 +103,17 @@ class ElasticSeeker(DBSeeker):
     async def get_person_info(self, actor: str) -> tuple:
         """Функция ищет в ES совпадения по переданному имени человека и возвращает кортеж (id, name)."""
         query = {
-            "query": {
-                "multi_match": {
-                    "query": actor,
-                    "fields": ["full_name_*"],
-                    "fuzziness": "AUTO",
-                    "prefix_length": 1
-                }
+            'query': {
+                'multi_match': {'query': actor, 'fields': ['full_name_*'], 'fuzziness': 'AUTO', 'prefix_length': 1}
             },
-            "size": 1
+            'size': 1,
         }
         pprint(actor)
         query_result: List[dict] | None = await self.get_by_query(index=self.person_index, query=query)
         pprint(query_result)
 
         person_id = query_result[-1].get('id')
-        person_name = query_result[-1].get("full_name_ru") or query_result[-1].get("full_name_en")
+        person_name = query_result[-1].get('full_name_ru') or query_result[-1].get('full_name_en')
 
         if query_result:
             return person_id, person_name
@@ -127,78 +124,42 @@ class ElasticSeeker(DBSeeker):
         actor_id, actor_name = await self.get_person_info(actor)
 
         if not actor_id:
-            return f"Не удалось найти актера {actor}"
+            return f'Не удалось найти актера {actor}'
 
         query = {
-            "query": {
-                "nested": {
-                    "path": "actors",
-                    "query": {
-                        "bool": {
-                            "must": [
-                                {
-                                    "term": {
-                                        "actors.id": actor_id
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            },
-            "size": 5,
-            "sort": [
-                {
-                    "rating_imdb": {
-                        "order": "desc"
-                    }
-                }
-            ]
+            'query': {'nested': {'path': 'actors', 'query': {'bool': {'must': [{'term': {'actors.id': actor_id}}]}}}},
+            'size': 5,
+            'sort': [{'rating_imdb': {'order': 'desc'}}],
         }
 
         query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
 
         if query_result:
-            response = f"Топ фильмы с актером {actor_name}: "
-            response += ', '.join([
-                film.get('title_ru') for film in query_result[:max_film_count]
-            ])
+            response = f'Топ фильмы с актером {actor_name}: '
+            response += ', '.join([film.get('title_ru') for film in query_result[:max_film_count]])
             return response
 
-        return f"Мне не удалось найти фильмов с участием {actor_name}"
+        return f'Мне не удалось найти фильмов с участием {actor_name}'
 
     async def get_director_films_count(self, director: str) -> str:
         """Функция возвращает количество фильмов с указанным человеком (сценаристом, режиссером, актером)"""
 
         director_id, director_name = await self.get_person_info(director)
         if not director_id:
-            return f"Не удалось найти режиссера {director}"
+            return f'Не удалось найти режиссера {director}'
 
         query = {
-            "query": {
-                "nested": {
-                    "path": "actors",
-                    "query": {
-                        "bool": {
-                            "must": [
-                                {
-                                    "term": {
-                                        "directors.id": director_id
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
+            'query': {
+                'nested': {'path': 'actors', 'query': {'bool': {'must': [{'term': {'directors.id': director_id}}]}}}
             },
-            "size": 1000
+            'size': 1000,
         }
 
         query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
         if query_result:
-            return f"Фильмография {director} насчитывает около {len(query_result)} картин"
+            return f'Фильмография {director} насчитывает около {len(query_result)} картин'
 
-        return f"Мне не удалось найти фильмов, созданных {director}"
+        return f'Мне не удалось найти фильмов, созданных {director}'
 
     async def get_film_length(self, movie_title: str) -> str:
         """Функция возвращает продолжительность фильма в минутах."""

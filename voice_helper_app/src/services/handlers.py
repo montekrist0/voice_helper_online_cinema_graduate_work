@@ -15,6 +15,7 @@ from fastapi import Depends
 # TODO: провести рефакторинг класса CommandHandler
 # TODO: добавить тайп-хинтинги и докстринги
 
+
 class CommandHandler:
     def __init__(self, commands_db: AsyncIOMotorDatabase, es_client: AsyncElasticsearch):
         self.db = commands_db
@@ -63,9 +64,7 @@ class CommandHandler:
         self.to_be_removed = tbr['text']
 
     def cleaning_user_txt(self, user_txt: str) -> str:
-        return ' '.join([
-            word.lower() for word in user_txt.split() if word not in self.to_be_removed
-        ]).strip()
+        return ' '.join([word.lower() for word in user_txt.split() if word not in self.to_be_removed]).strip()
 
     def recognize_cmd(self, parse_object: dict) -> dict:
         for command_name, texts_comparisons in self.commands.items():
@@ -111,7 +110,8 @@ class CommandHandler:
     def recognize_key_word(parse_object: dict) -> dict:
         parse_object['key_word'] = ' '.join(
             [
-                user_word for user_word in parse_object['after_cleaning_user_txt'].split()
+                user_word
+                for user_word in parse_object['after_cleaning_user_txt'].split()
                 if user_word not in parse_object['original_txt']
             ]
         ).strip()
