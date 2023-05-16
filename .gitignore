@@ -169,3 +169,5 @@ queris.sql
 *.csv
 dump_prepare.sh
 dump.sql
+dump.rdb
+/queries_es

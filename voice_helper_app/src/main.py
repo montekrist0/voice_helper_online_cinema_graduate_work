@@ -1,8 +1,11 @@
+from elasticsearch import AsyncElasticsearch
 import uvicorn
 from fastapi import FastAPI
 
+from core.configs import settings
 from db.clients import mongo, redis
 from view.api import render, receiving
+from db.clients import elastic
 
 app = FastAPI(
     title='API голосового помощника',
@@ -20,6 +23,7 @@ app.include_router(receiving.router, prefix='/api/v1/message', tags=['Message'])
 async def startup():
     mongo.client = mongo.create_mongo_client()
     redis.redis_message = redis.create_redis_message()
+    elastic.es = AsyncElasticsearch(hosts=[f'{settings.elastic_host}:{settings.elastic_port}'])
 
 
 @app.on_event('shutdown')

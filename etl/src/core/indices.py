@@ -30,7 +30,7 @@ PERSONS_SETTINGS = {
     'properties': {
         'id': {'type': 'keyword'},
         'full_name_en': {'type': 'text', 'analyzer': 'ru_en'},
-        'full_name_ru': {'type': 'text', 'analyzer': 'ru_en'}
+        'full_name_ru': {'type': 'text', 'analyzer': 'ru_en'},
     },
 }
 
