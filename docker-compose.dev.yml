@@ -81,18 +81,6 @@ services:
     ports:
       - "8081:8081"
 
-  vh_redis_message:
-    image: redis:7.0.7
-    restart: always
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    volumes:
-      - ./db/redis_message:/data
-    ports:
-      - "6389:6379"
 
 
   elastic:
