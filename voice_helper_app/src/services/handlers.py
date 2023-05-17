@@ -12,10 +12,6 @@ from services.movies_storage_handler import ElasticSeeker
 from fastapi import Depends
 
 
-# TODO: провести рефакторинг класса CommandHandler
-# TODO: добавить тайп-хинтинги и докстринги
-
-
 class CommandHandler:
     def __init__(self, commands_db: AsyncIOMotorDatabase, es_client: AsyncElasticsearch):
         self.db = commands_db
@@ -24,7 +20,8 @@ class CommandHandler:
         self.to_be_removed: list | None = None
         self.movies_db = ElasticSeeker(es_client)
 
-    async def handle_user_query(self, user_txt):
+    async def handle_user_query(self, user_txt: str):
+        """Входная функция. Создается рабочий объект(словарь). С основной информацией для парсинга данных"""
         parse_object = {
             'before_cleaning_user_txt': user_txt,
             'after_cleaning_user_txt': '',
@@ -35,16 +32,15 @@ class CommandHandler:
             'answer': '',
             'percent': 0,
         }
-        print(user_txt)
         await self.update_cmd_tbr()
         parse_object['after_cleaning_user_txt'] = self.cleaning_user_txt(user_txt)
         parse_object = self.recognize_cmd(parse_object)
         parse_object = self.recognize_key_word(parse_object)
         parse_object = await self.execute_cmd(parse_object)
-        print(parse_object['answer'])
         return parse_object['answer']
 
     async def update_cmd_tbr(self):
+        """Вызов получения данных(cmd, tbr) через дельту времени"""
         delta_update = timedelta(hours=settings.delta_update_cmd_tbr)
         if self.last_update_cmd_tbr is None or self.last_update_cmd_tbr + delta_update < datetime.utcnow():
             await self.get_actual_commands()
@@ -52,21 +48,25 @@ class CommandHandler:
             self.last_update_cmd_tbr = datetime.utcnow()
 
     async def get_actual_commands(self):
+        """Получение словаря со списком команд и фраз тригеров cmd:trigger"""
         collection = self.db[settings.mongo_collection_cmd]
         commands = await collection.find_one()
         commands.pop('_id')
         self.commands = commands
 
     async def get_actual_tbr(self):
+        """Получение списка слов для первичной чистки запроса пользователя"""
         collection = self.db[settings.mongo_collection_tbr]
         tbr = await collection.find_one()
         tbr.pop('_id')
         self.to_be_removed = tbr['text']
 
     def cleaning_user_txt(self, user_txt: str) -> str:
+        """Первичная очистка запроса пользователя от фонового шума"""
         return ' '.join([word.lower() for word in user_txt.split() if word not in self.to_be_removed]).strip()
 
     def recognize_cmd(self, parse_object: dict) -> dict:
+        """Обнаружение команды используя расстояние Левенштейна"""
         for command_name, texts_comparisons in self.commands.items():
             for original_text in texts_comparisons:
                 percent = fuzz.ratio(parse_object['after_cleaning_user_txt'], original_text)
@@ -81,7 +81,8 @@ class CommandHandler:
             parse_object['final_cmd'] = 'ask_again'
         return parse_object
 
-    async def execute_cmd(self, parse_object: dict):
+    async def execute_cmd(self, parse_object: dict) -> dict:
+        """Выполнение команды, запрос в еластик"""
         command_matrix = {
             'author': self.movies_db.get_film_author,
             'actor': self.movies_db.get_actor_films,
@@ -108,6 +109,7 @@ class CommandHandler:
 
     @staticmethod
     def recognize_key_word(parse_object: dict) -> dict:
+        """Сбор ключевого слова соблюдая пробел"""
         parse_object['key_word'] = ' '.join(
             [
                 user_word
@@ -120,7 +122,7 @@ class CommandHandler:
 
 @lru_cache(maxsize=None)
 def get_command_handler(
-    mongo_client=Depends(get_mongo_client), elastic_client: AsyncElasticsearch = Depends(get_elastic)
-):
-    mongo_db = mongo_client[settings.mongo_db]
+        mongo_client=Depends(get_mongo_client), elastic_client: AsyncElasticsearch = Depends(get_elastic)
+) -> CommandHandler:
+    mongo_db: AsyncIOMotorDatabase = mongo_client[settings.mongo_db]
     return CommandHandler(mongo_db, elastic_client)
