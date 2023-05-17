@@ -2,7 +2,7 @@ import orjson
 
 from fastapi import APIRouter, WebSocket, Depends
 
-from services.handlers import CommandHandler, get_command_handler
+from services.cmd_handler import CommandHandler, get_command_handler
 
 router = APIRouter()
 

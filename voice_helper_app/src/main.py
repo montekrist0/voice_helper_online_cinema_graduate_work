@@ -3,7 +3,7 @@ import uvicorn
 from fastapi import FastAPI
 
 from core.configs import settings
-from db.clients import mongo, redis
+from db.clients import mongo
 from view.api import render, receiving
 from db.clients import elastic
 
@@ -22,14 +22,12 @@ app.include_router(receiving.router, prefix='/api/v1/message', tags=['Message'])
 @app.on_event('startup')
 async def startup():
     mongo.client = mongo.create_mongo_client()
-    redis.redis_message = redis.create_redis_message()
     elastic.es = AsyncElasticsearch(hosts=[f'{settings.elastic_host}:{settings.elastic_port}'])
 
 
 @app.on_event('shutdown')
 def shutdown():
     mongo.client.close()
-    redis.redis_message.close()
 
 
 if __name__ == '__main__':
