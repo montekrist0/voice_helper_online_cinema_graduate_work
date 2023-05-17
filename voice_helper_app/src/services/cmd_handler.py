@@ -36,6 +36,7 @@ class CommandHandler:
         parse_object['after_cleaning_user_txt'] = self.cleaning_user_txt(user_txt)
         parse_object = self.recognize_cmd(parse_object)
         parse_object = self.recognize_key_word(parse_object)
+        print(parse_object)
         parse_object = await self.execute_cmd(parse_object)
         return parse_object['answer']
 
@@ -63,7 +64,7 @@ class CommandHandler:
 
     def cleaning_user_txt(self, user_txt: str) -> str:
         """Первичная очистка запроса пользователя от фонового шума"""
-        return ' '.join([word.lower() for word in user_txt.split() if word not in self.to_be_removed]).strip()
+        return ' '.join([word.lower() for word in user_txt.split() if word.lower() not in self.to_be_removed]).strip()
 
     def recognize_cmd(self, parse_object: dict) -> dict:
         """Обнаружение команды используя расстояние Левенштейна"""
@@ -94,6 +95,8 @@ class CommandHandler:
             'film_genre': self.movies_db.get_film_genre,
             'top_actor': self.movies_db.get_top_actor,
             'film_about': self.movies_db.get_film_description,
+            'film_year': self.movies_db.get_film_year,
+            'film_rating': self.movies_db.get_film_rating
         }
 
         command = parse_object.get('final_cmd')
