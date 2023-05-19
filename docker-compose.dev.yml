@@ -47,9 +47,6 @@ services:
       && python /app/main.py"
     ports:
       - "8001:8001"
-    depends_on:
-      vh_redis_message:
-        condition: service_healthy
 
 
 
@@ -62,11 +59,11 @@ services:
       - ./.env
     volumes:
       - ./db/mongo:/docker-entrypoint-initdb.d
-    healthcheck:
-      test: [ "CMD", "mongo", "--eval", "db.runCommand('ping').ok" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
+#    healthcheck:
+#      test: ["CMD", "sh", "-c", "command -v mongo && mongo --eval 'db.runCommand({ ping: 1 }).ok' | grep 1"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 5
     ports:
       - "27017:27017"
 
@@ -81,18 +78,6 @@ services:
     ports:
       - "8081:8081"
 
-  vh_redis_message:
-    image: redis:7.0.7
-    restart: always
-    healthcheck:
-      test: [ "CMD", "redis-cli", "--raw", "incr", "ping" ]
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    volumes:
-      - ./db/redis_message:/data
-    ports:
-      - "6389:6379"
 
 
   elastic:

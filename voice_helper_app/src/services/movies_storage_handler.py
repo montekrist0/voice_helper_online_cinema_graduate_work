@@ -108,9 +108,7 @@ class ElasticSeeker(DBSeeker):
             },
             'size': 1,
         }
-        pprint(actor)
         query_result: List[dict] | None = await self.get_by_query(index=self.person_index, query=query)
-        pprint(query_result)
 
         person_id = query_result[-1].get('id')
         person_name = query_result[-1].get('full_name_ru') or query_result[-1].get('full_name_en')
@@ -143,7 +141,6 @@ class ElasticSeeker(DBSeeker):
 
     async def get_director_films_count(self, director: str) -> str:
         """Функция возвращает количество фильмов с указанным человеком (сценаристом, режиссером, актером)"""
-
         director_id, director_name = await self.get_person_info(director)
         if not director_id:
             return f'Не удалось найти режиссера {director}'
@@ -163,39 +160,184 @@ class ElasticSeeker(DBSeeker):
 
     async def get_film_length(self, movie_title: str) -> str:
         """Функция возвращает продолжительность фильма в минутах."""
-        pass
+        query = {
+            'query': {
+                'multi_match': {
+                    'query': movie_title,
+                    'fields': ['title_*'],
+                    'fuzziness': 'AUTO'}
+            },
+            'size': 1}
+        query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
+        response = f'Длительность фильма {movie_title} мне неизвестна'
+        if query_result:
+            film_length: int = query_result[-1].get('film_length')
+            film_name: str = query_result[-1].get('title_ru')
+            movie_title: str = film_name if film_name else movie_title
+            if film_length:
+                response = f'Длительность фильма {movie_title} составляет {film_length} минут'
+
+        return response
 
     async def get_top_films(self, *args, **kwargs) -> str:
         """Функция возвращает топ-N фильмом по рейтингу."""
-        pass
+        size = 10
+        query = {
+            'query': {
+                'match_all': {}
+            },
+            'size': size,
+            'sort': [
+                {'rating_imdb': {'order': 'desc'}}
+            ]
+        }
+        query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
+        response = f'Топ {size} фильмов мне неизвестны'
+        if query_result:
+            films_names: str = ', '.join([film.get('title_ru') for film in query_result])
+            if films_names:
+                response = f'Топ фильмы: {films_names}'
+        return response
 
-    async def get_top_n_films_in_genre(self, *args, **kwargs) -> str:
+    async def get_top_n_films_in_genre(self, genre_name: str) -> str:
         """Функция возвращает топ-N фильмов в переданном жанре."""
-        pass
+        size = 10
+        query = {
+            'query': {
+                'nested': {
+                    'path': 'genres',
+                    'query': {
+                        'bool': {
+                            'must': [{'match': {'genres.name': genre_name}}]}
+                    }
+                }
+            },
+            'size': size,
+        }
+        query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
+        response = f'Топ {size} фильмов в жанре {genre_name} мне неизвестны'
+        if query_result:
+            films_names: str = ', '.join([film.get('title_ru') for film in query_result])
+            if films_names:
+                response = f'Топ фильмы в жанре {genre_name}: {films_names}'
+        return response
 
     async def get_actor_top_n_films(self, *args, **kwargs) -> str:
         """Функция возвращает топ-N фильмов с переданным актером (сценаристом, режиссером)."""
+        # TODO ЧТО ЭТО ТАКОЕ
         pass
 
-    async def get_film_genre(self, *args, **kwargs) -> str:
+    async def get_film_genre(self, movie_title: str) -> str:
         """Функция возвращает жанры, в котором снят фильм."""
-        pass
+        query = {
+            'query': {
+                'multi_match': {
+                    'query': movie_title,
+                    'fields': ['title_*'],
+                    'fuzziness': 'AUTO'}
+            },
+            'size': 1}
+        query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
+        response = f'Мне неизвестно в каком жанре снят фильм'
+        if query_result:
+            films_genres: list = query_result[-1].get('genres')
+            film_name: str = query_result[-1].get('title_ru')
+            response = f'Мне неизвестно в каком жанре снят фильм {film_name}'
+            if films_genres:
+                films_genres: str = ''.join([genre.get('name') for genre in films_genres])
+                response = f'Фильм {film_name} снят в жанре: {films_genres}'
+        return response
 
     async def get_top_actor(self, *args, **kwargs) -> str:
         """Функция возвращает актера с самым большим числом фильмов."""
-        pass
+        query = {
+            'query': {
+                'bool': {
+                    'must': [
+                        {
+                            'term': {
+                                'role': 'actor'
+                            }
+                        }
+                    ]
+                }
+            },
+            'size': 1,
+            'sort': [
+                {
+                    'film_ids': {
+                        'order': 'desc'
+                    }
+                }
+            ]
+        }
+        query_result: List[dict] | None = await self.get_by_query(index=self.person_index, query=query)
+        response = f'Мне неизвестно какой самый популярный актёр'
+        if query_result:
+            actor_name: str = query_result[-1].get('full_name_ru')
+            if actor_name:
+                response = f'Самый популярный актер {actor_name}'
+        return response
 
-    async def get_film_description(self, *args, **kwargs) -> str:
+    async def get_film_description(self, movie_title) -> str:
         """Функция возвращает описание фильма."""
-        pass
+        query = {
+            'query': {
+                'multi_match': {
+                    'query': movie_title,
+                    'fields': ['title_*'],
+                    'fuzziness': 'AUTO'}
+            },
+            'size': 1}
+        query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
+        response = 'Мне неизвестно про что фильм'
+        if query_result:
+            description: str = query_result[-1].get('description')
+            movie_title: str = query_result[-1].get('title_ru')
+            response = f'Мне неизвестно про что фильм {movie_title}'
+            if description:
+                response = f'Описание фильма {movie_title}:...{description}'
+        return response
 
-    async def get_film_year(self, *args, **kwargs) -> str:
+    async def get_film_year(self, movie_title) -> str:
         """Функция возвращает год создания фильма или сериала."""
-        pass
+        query = {
+            'query': {
+                'multi_match': {
+                    'query': movie_title,
+                    'fields': ['title_*'],
+                    'fuzziness': 'AUTO'}
+            },
+            'size': 1}
+        query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
+        response = 'Мне неизвестен год создания фильма'
+        if query_result:
+            year: str = query_result[-1].get('year')
+            movie_title: str = query_result[-1].get('title_ru')
+            response = f'Мне неизвестен год создания фильма {movie_title}'
+            if year:
+                response = f'Год создания фильма {movie_title}:...{year}'
+        return response
 
-    async def get_film_rating(self, *args, **kwargs) -> str:
+    async def get_film_rating(self, movie_title) -> str:
         """Функция возвращает рейтинг фильма или сериала."""
-        pass
+        query = {
+            'query': {
+                'multi_match': {
+                    'query': movie_title,
+                    'fields': ['title_*'],
+                    'fuzziness': 'AUTO'}
+            },
+            'size': 1}
+        query_result: List[dict] | None = await self.get_by_query(index=self.movies_index, query=query)
+        response = 'Мне неизвестен рейтинг'
+        if query_result:
+            rating: str = query_result[-1].get('rating_imdb')
+            movie_title: str = query_result[-1].get('title_ru')
+            response = f'Мне неизвестен рейтинг {movie_title}'
+            if rating:
+                response = f'Рейтинг {movie_title}:...{rating}'
+        return response
 
     async def get_by_query(self, index: str, query: dict) -> List[dict] | None:
         """Функция для выполнения переданного в нее запроса ElasticSearch."""
