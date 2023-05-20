@@ -30,7 +30,7 @@ services:
       - redis_volume:/data
     ports:
       - "6379:6379"
-
+# TODO: выпилить редис из docker-compose, если не используется
   vh_app:
     image: python:3.10
     volumes:
