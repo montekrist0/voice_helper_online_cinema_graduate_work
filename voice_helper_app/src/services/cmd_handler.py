@@ -3,8 +3,10 @@ from functools import lru_cache
 
 from fuzzywuzzy import fuzz
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import PyMongoError
 
 from core.configs import settings
+from core.log_config import logger
 from db.clients.mongo import get_mongo_client
 
 from fastapi import Depends
@@ -17,24 +19,20 @@ class CommandHandler:
         self.last_update_cmd_tbr: datetime | None = None
         self.commands: dict | None = None
         self.to_be_removed: list | None = None
-        # self.movies_db = ElasticSeeker(es_client)
 
-    async def handle_user_query(self, user_txt: str) -> UserQueryObject:
+    async def handle_user_query(self, user_txt: str) -> UserQueryObject | None:
         """Входная функция. Создается рабочий объект(словарь). С основной информацией для парсинга данных"""
         user_query_object = UserQueryObject()
         await self.update_cmd_tbr()
+        if not self.is_cmd_tbr():
+            return None
         user_query_object.after_cleaning_user_txt = self.cleaning_user_txt(user_txt)
         self.recognize_cmd(user_query_object)
         self.recognize_key_word(user_query_object)
-        # TODO: везде в проекте заменить print на DEBUG логирование
-        print(user_query_object)
+        logger.info(f'Объект запроса:\n{user_query_object}')
         return user_query_object
-        # user_query_object = await self.execute_cmd(user_query_object)
-        # return user_query_object.answer
 
     async def update_cmd_tbr(self):
-        # TODO: выяснить нужна ли эта функция и можно ли как-то
-        #       оптимизировать этот функционал?
         """Вызов получения данных(cmd, tbr) через дельту времени"""
         delta_update = timedelta(hours=settings.delta_update_cmd_tbr)
         if self.last_update_cmd_tbr is None or self.last_update_cmd_tbr + delta_update < datetime.utcnow():
@@ -44,18 +42,30 @@ class CommandHandler:
 
     async def get_actual_commands(self):
         """Получение словаря со списком команд и фраз тригеров cmd:trigger"""
-        collection = self.db[settings.mongo_collection_cmd]
-        commands = await collection.find_one()
-        commands.pop('_id')
-        self.commands = commands
+        try:
+            collection = self.db[settings.mongo_collection_cmd]
+            commands = await collection.find_one()
+            commands.pop('_id')
+            self.commands = commands
+        except PyMongoError:
+            logger.debug('Не удалось получить актуальные команды')
+            self.commands = None
 
     async def get_actual_tbr(self):
-        # TODO: что такое tbr? совсем непонятно. надо изменить название
         """Получение списка слов для первичной чистки запроса пользователя"""
-        collection = self.db[settings.mongo_collection_tbr]
-        tbr = await collection.find_one()
-        tbr.pop('_id')
-        self.to_be_removed = tbr['text']
+        try:
+            collection = self.db[settings.mongo_collection_tbr]
+            tbr = await collection.find_one()
+            tbr.pop('_id')
+            self.to_be_removed = tbr['text']
+        except PyMongoError:
+            logger.debug('Не удалось получить список слов для первичной очистки')
+            self.to_be_removed = None
+
+    async def is_cmd_tbr(self):
+        if self.commands and self.to_be_removed:
+            return True
+        return False
 
     def cleaning_user_txt(self, user_txt: str) -> str:
         """Первичная очистка запроса пользователя от фонового шума"""

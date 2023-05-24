@@ -1,11 +1,12 @@
 """Модуль, описывающий класс с методами для поиска в БД контента онлайн-кинотеатра."""
 from abc import ABC, abstractmethod
-from elasticsearch import AsyncElasticsearch, NotFoundError
-from typing import List
-from pprint import pprint
 from functools import lru_cache
-from db.clients.elastic import get_elastic
+
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from fastapi import Depends
+
+from db.clients.elastic import get_elastic
+from core.log_config import logger
 
 
 class DBSeeker(ABC):
@@ -119,8 +120,6 @@ class ElasticSeeker(DBSeeker):
                         for writer in film_writers[:max_writer_count]
                     ]
                 )
-
-            pprint(response)
         return response
 
     async def get_person_info(self, actor: str) -> tuple:
@@ -328,13 +327,13 @@ class ElasticSeeker(DBSeeker):
 
         return response
 
-    async def get_by_query(self, index: str, query: dict) -> List[dict] | None:
+    async def get_by_query(self, index: str, query: dict) -> list[dict] | None:
         """Функция для выполнения переданного в нее запроса ElasticSearch."""
         try:
             data = await self.client.search(index=index, body=query)
             return [item['_source'] for item in data['hits']['hits']]
-
         except NotFoundError:
+            logger.debug('Не удалось получить данные из ES')
             return None
 
     # TODO:

@@ -1,8 +1,8 @@
-from elasticsearch import AsyncElasticsearch
 import uvicorn
 from fastapi import FastAPI
 
-from core.configs import settings
+
+from core.log_config import logger
 from db.clients import mongo
 from view.api import render, receiving
 from db.clients import elastic
@@ -21,13 +21,17 @@ app.include_router(receiving.router, prefix='/api/v1/message', tags=['Message'])
 
 @app.on_event('startup')
 async def startup():
+    logger.info('Старт приложения')
     mongo.client = mongo.create_mongo_client()
-    elastic.es = AsyncElasticsearch(hosts=[f'{settings.elastic_host}:{settings.elastic_port}'])
+    await mongo.check_mongo()
+    elastic.es = elastic.create_es_client()
+    await elastic.check_es()
 
 
 @app.on_event('shutdown')
 def shutdown():
     mongo.client.close()
+    logger.info('Завершение приложения')
 
 
 if __name__ == '__main__':
