@@ -43,25 +43,21 @@ services:
       - redis_volume:/data
     ports:
       - "6379:6379"
-# TODO: выпилить редис из docker-compose, если не используется
+
   vh_app:
-    image: python:3.10
-    volumes:
-      - ./voice_helper_app/src:/app
+    build:
+      context: ./voice_helper_app
+    image: vh_app-image
     env_file:
       - ./.env
-    environment:
-      PYTHONUNBUFFERED: 1
-      PYTHONDONTWRITEBYTECODE: 1
     restart: unless-stopped
-    command: >
-      bash -c "pip install --upgrade pip
-      && pip install --no-cache-dir -r /app/requirements.txt
-      && python /app/main.py"
+    depends_on:
+      elastic:
+        condition: service_healthy
+      vh_mongo_db:
+        condition: service_started
     ports:
       - "8001:8001"
-
-
 
   vh_mongo_db:
     image: mongo:6.0.5-jammy
@@ -72,11 +68,6 @@ services:
       - ./.env
     volumes:
       - ./db/mongo:/docker-entrypoint-initdb.d
-#    healthcheck:
-#      test: ["CMD", "sh", "-c", "command -v mongo && mongo --eval 'db.runCommand({ ping: 1 }).ok' | grep 1"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 5
     ports:
       - "27017:27017"
 
@@ -90,8 +81,6 @@ services:
       ME_CONFIG_MONGODB_PORT: 27017
     ports:
       - "8081:8081"
-
-
 
   elastic:
     image: elasticsearch:8.5.3
@@ -142,7 +131,6 @@ services:
     container_name: etl_container
     restart: unless-stopped
     entrypoint: sh -c "python etl.py"
-
 
 volumes:
   postgresql_volume_compose:

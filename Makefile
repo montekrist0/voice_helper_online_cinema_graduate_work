@@ -1,6 +1,6 @@
 make run-tests:
 	docker-compose down
-	docker-compose -f docker-compose.testing.yml up --attach tests --exit-code-from tests
+	docker-compose -f tests/docker-compose.testing.yml up --attach tests --exit-code-from tests
 
 
 up:
