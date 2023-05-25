@@ -1,16 +1,12 @@
 from datetime import datetime, timedelta
-from functools import lru_cache
 
 from fuzzywuzzy import fuzz
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo.errors import PyMongoError
 
-from core.configs import settings
-from core.log_config import logger
-from db.clients.mongo import get_mongo_client
-
-from fastapi import Depends
-from services.models.models import UserQueryObject
+from ..core.configs import settings
+from ..core.log_config import logger
+from ..services.models.models import UserQueryObject
 
 
 class CommandHandler:
@@ -104,9 +100,3 @@ class CommandHandler:
             ]
         ).strip()
         return user_query_object
-
-
-@lru_cache(maxsize=None)
-def get_command_handler(mongo_client=Depends(get_mongo_client)) -> CommandHandler:
-    mongo_db: AsyncIOMotorDatabase = mongo_client[settings.mongo_db]
-    return CommandHandler(mongo_db)

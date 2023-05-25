@@ -7,6 +7,7 @@ from fastapi import Depends
 
 from db.clients.elastic import get_elastic
 from core.log_config import logger
+from typing import Callable
 
 
 class DBSeeker(ABC):
@@ -68,7 +69,7 @@ class ElasticSeeker(DBSeeker):
 
     async def execute_user_command(self, command: str, keyword: str) -> str:
         """Выполнение команды, запрос в еластик"""
-        command_matrix = {
+        command_matrix: dict[str, Callable] = {
             'author': self.get_film_author,
             'actor': self.get_actor_films,
             'how_many_films': self.get_director_films_count,

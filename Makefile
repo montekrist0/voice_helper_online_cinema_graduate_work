@@ -1,13 +1,15 @@
 make run-tests:
 	docker-compose down
-	docker-compose -f docker-compose.testing.yml up --attach tests --exit-code-from tests
+	docker-compose -f tests/docker-compose.testing.yml up --attach tests --exit-code-from tests
 
 
 up:
 	make build
 	make start
-	make admin-up
 	make start-load-data-to-elastic
+
+down:
+	docker compose down -v
 
 dev-up:
 	make dev-build
