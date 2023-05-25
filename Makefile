@@ -8,6 +8,9 @@ up:
 	make start
 	make start-load-data-to-elastic
 
+down:
+	docker compose down -v
+
 dev-up:
 	make dev-build
 	make dev-start
