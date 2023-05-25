@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  vh_mongo_db:
+    image: mongo:6.0.5-jammy
+    restart: always
+    expose:
+      - "27017"
+    env_file:
+      - ../.env
+    volumes:
+      - ../db/mongo:/docker-entrypoint-initdb.d
+    ports:
+      - "27017:27017"
+
+  tests:
+    image: vh_app-image
+    container_name: tests_container
+    env_file:
+      - ../.env
+    volumes:
+      - ./:/app/tests
+      - ./unit/.env.docker:/app/tests/unit/.env
+    entrypoint: >
+      sh -c "pip install -r /app/tests/requirements.txt
+      && python3 -m pytest /app/tests/unit/src/ -vv"
