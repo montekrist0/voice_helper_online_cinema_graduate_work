@@ -1,79 +1,56 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
+
 <head>
     <meta charset="UTF-8">
-    <title>Web Speech API Demo</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@2.51.6/dist/full.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        #result {
-            border: 1px solid black;
-            margin: 10px;
-            padding: 10px;
-        }
+        
     </style>
 </head>
+
 <body>
-<h1>Web Speech API Demo</h1>
-<button id="start">Start Recognition</button>
-<button id="stop">Stop Recognition</button>
-<div id="result"></div>
-<script>
-    const resultDiv = document.getElementById('result');
-    const startButton = document.getElementById('start');
-    const stopButton = document.getElementById('stop');
+    <main class="flex w-full h-[100vh] bg-black ">
+        <div class="container mx-auto max-w-screen-md flex flex-col">
+            <div id="messages-list" class="p-10 flex-1 h-full max-h-full overflow-auto">
 
-    const recognition = new window.webkitSpeechRecognition();
-    recognition.lang = 'ru-RU';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+                <div id="preview-msg" class="chat chat-end py-8">
+                    <div class="chat-bubble bg-[#4980d3]">
+                        <div id="preview-msg-typewriter">
+                            Нажмите на значок микрофона чтобы начать говорить
+                        </div>
+                    </div>
+                </div>
 
-    let finalTranscript = '';
+                <div id="user-msg" class="chat chat-start py-8 hidden">
+                    <div class="chat-bubble">
+                        <div id="user-msg-typewriter"></div>
+                    </div>
+                </div>
 
-    recognition.onresult = (event) => {
-        let interimTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-            const transcript = event.results[i][0].transcript;
-            if (event.results[i].isFinal) {
-                finalTranscript += transcript + ' ';
-            } else {
-                interimTranscript += transcript;
-            }
-        }
-        resultDiv.innerHTML = finalTranscript + '<i style="color:grey">' + interimTranscript + '</i>';
+                <div id="bot-msg" class="chat chat-end py-8 hidden">
+                    <div class="chat-bubble">
+                        <div id="bot-msg-typewriter"></div>
+                    </div>
+                </div>
 
-        if (event.results[event.results.length - 1].isFinal) {
-            fetch('http://localhost:8001/api/v1/message/', {
-                method: 'POST',
-                body: JSON.stringify({text: finalTranscript}),
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-                console.log('Data sent successfully.');
-            })
-            .catch(error => {
-                console.error('There was a problem with sending data: ' + error.message);
-            });
-            finalTranscript = '';
-        }
-    };
+            </div>
 
-    recognition.onerror = (event) => {
-        console.error('Recognition error:', event.error);
-    };
-
-    startButton.onclick = () => {
-        recognition.start();
-        console.log('Recognition started.');
-    };
-
-    stopButton.onclick = () => {
-        recognition.stop();
-        console.log('Recognition stopped.');
-    };
-</script>
+            <div class="shrink-0 h-[450px] w-full flex justify-center items-center relative">
+                <button id="btn-speak" type="button" class="absolute w-[100px] hover:scale-125 ease-in-out duration-300">
+                    <img src="static/img/btn-speak.png" alt="">
+                </button>
+                <div id="wave-speak" class="w-full max-w-[600px] h-full hidden">
+                    <img class="w-full" src="static/img/wave-speak.gif" alt="">
+                </div>
+            </div>
+        </div>
+    </main>
+    <script type="text/javascript" src="static/main.js"></script>
 </body>
+
 </html>
