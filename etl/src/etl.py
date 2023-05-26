@@ -8,7 +8,7 @@ from redis import exceptions as redis_exceptions
 from services.elastic_loader_service import create_indices
 from services.etl_handler_service import get_etl_handlers
 from services.state_service import RedisStorage, State
-from settings import ELASTIC_HOST, ELASTIC_PORT, ETL_CONFIGS, REDIS_HOST, dsl
+from settings import dsl, config, ETL_CONFIGS
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s:%(levelname)s:%(message)s')
 
@@ -20,9 +20,9 @@ async def start_etl():
     while True:
 
         try:
-            state = State(RedisStorage(create_redis_connection(REDIS_HOST)))
-            elastic = create_elastic_connection(ELASTIC_HOST, ELASTIC_PORT)
-            db_conn = connect_db(dsl)
+            state = State(RedisStorage(create_redis_connection(config.redis_host)))
+            elastic = create_elastic_connection(config.elastic_host, config.elastic_port)
+            db_conn = connect_db(dsl.dict())
             etl_handlers = get_etl_handlers(db_conn, ETL_CONFIGS)
             create_indices(etl_handlers, elastic)
 
@@ -41,17 +41,17 @@ async def start_etl():
                         f'****** Trying to reconnect... ******'
                     )
                     db_conn.close()
-                    db_conn = connect_db(dsl)
+                    db_conn = connect_db(dsl.dict())
                     for etl_handler in etl_handlers:
                         etl_handler.extractor.db_cursor = db_conn.cursor()
 
                 except elasticsearch.ConnectionError:
                     logging.info('...Reconnect to elastic')
-                    elastic = create_elastic_connection(ELASTIC_HOST, ELASTIC_PORT)
+                    elastic = create_elastic_connection(config.elastic_host, config.elastic_port)
 
                 except redis_exceptions.RedisError as redis_exc:
                     logging.exception(f'Redis error occured:\n\t {redis_exc} ')
-                    state = State(RedisStorage(create_redis_connection(REDIS_HOST)))
+                    state = State(RedisStorage(create_redis_connection(config.redis_host)))
 
         except (psycopg2.InterfaceError, psycopg2.OperationalError, psycopg2.ProgrammingError):
             db_conn.close()
