@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     mongo_collection_tbr = 'to_be_removed'
     elastic_host: str = Field(default='localhost')
     elastic_port: int = Field(default='9200')
+    percent_unknown: int = Field(default=49)
+    percent_ask_again_min: int = Field(default=50)
+    percent_ask_again_max: int = Field(default=60)
 
 
 settings = Settings()

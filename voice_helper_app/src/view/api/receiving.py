@@ -8,15 +8,11 @@ from services.movies_storage_handler import ElasticSeeker, get_response_maker
 router = APIRouter()
 
 
-# TODO:
-#  - удалить ненужные пустые файлы и директории
-
-
 @router.websocket('/')
 async def websocket_endpoint(
-    websocket: WebSocket,
-    command_handler: CommandHandler = Depends(get_command_handler),
-    response_maker: ElasticSeeker = Depends(get_response_maker),
+        websocket: WebSocket,
+        command_handler: CommandHandler = Depends(get_command_handler),
+        response_maker: ElasticSeeker = Depends(get_response_maker),
 ):
     await websocket.accept()
     while True:
