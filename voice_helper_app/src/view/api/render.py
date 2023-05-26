@@ -11,4 +11,4 @@ router = APIRouter()
 
 @router.get('/', response_class=HTMLResponse)
 async def read_item(request: Request):
-    return templates.TemplateResponse('index_ws.html', {'request': request})
+    return templates.TemplateResponse('index.html', {'request': request})
