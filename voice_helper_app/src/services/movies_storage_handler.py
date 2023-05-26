@@ -337,9 +337,6 @@ class ElasticSeeker(DBSeeker):
             logger.debug('Не удалось получить данные из ES')
             return None
 
-    # TODO:
-    #  - список фильмов, написанных таким-то сценаристом;
-
 
 @lru_cache(maxsize=None)
 def get_response_maker(elastic_client: AsyncElasticsearch = Depends(get_elastic)) -> ElasticSeeker:

@@ -11,7 +11,8 @@ from pydantic import errors as pydantic_errors
 from services.elastic_loader_service import ElasticsearchLoader
 from services.postgres_extractor_service import PostgresExtractor
 from services.state_service import State
-from settings import SLEEP_TIME_SECONDS, ETLConfig
+from settings import ETLConfig
+from settings import config as config_app
 
 
 @dataclass
@@ -47,7 +48,7 @@ class ETLHandler:
         formatted_query = self.config.query.format(last_md_date=self.last_modified_date, limit=self.config.limit_size)
 
         for batch in self.extractor.extract_batch_from_database(
-            query=formatted_query, fetch_size=self.config.batch_size
+                query=formatted_query, fetch_size=self.config.batch_size
         ):
             if batch:
                 self.last_modified_date = state.get_state(key=self.config.state_key, default='1970-01-01')
@@ -72,9 +73,10 @@ class ETLHandler:
                         f' to {new_last_modified_date}'
                     )
 
-        logging.info('ETL for %s finished. Paused for %s seconds', self.config.elastic_index_name, SLEEP_TIME_SECONDS)
+        logging.info('ETL for %s finished. Paused for %s seconds', self.config.elastic_index_name,
+                     config_app.sleep_time_seconds)
 
-        await asyncio.sleep(SLEEP_TIME_SECONDS)
+        await asyncio.sleep(config_app.sleep_time_seconds)
 
 
 def get_etl_handlers(conn, configs: List[ETLConfig]) -> List[ETLHandler]:
