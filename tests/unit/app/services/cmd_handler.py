@@ -84,8 +84,8 @@ class CommandHandler:
         if user_query_object.percent <= 49:
             user_query_object.final_cmd = 'unknown'
 
-        if 50 <= user_query_object.percent < 60:
-            user_query_object.final_cmd = 'ask_again'
+        # if 50 <= user_query_object.percent < 60:
+        #     user_query_object.final_cmd = 'ask_again'
 
         return user_query_object
 
