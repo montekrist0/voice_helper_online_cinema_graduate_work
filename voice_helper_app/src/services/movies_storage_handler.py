@@ -169,10 +169,9 @@ class ElasticSeeker(DBSeeker):
 
         if not director_id:
             return f'Не удалось найти режиссера {director}'
-
         query = {
             'query': {
-                'nested': {'path': 'actors', 'query': {'bool': {'must': [{'term': {'directors.id': director_id}}]}}}
+                'nested': {'path': 'directors', 'query': {'bool': {'must': [{'term': {'directors.id': director_id}}]}}}
             },
             'size': max_size,
         }
