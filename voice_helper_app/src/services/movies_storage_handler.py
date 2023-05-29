@@ -251,7 +251,7 @@ class ElasticSeeker(DBSeeker):
             response = f'Мне неизвестно в каком жанре снят фильм {film_name}'
 
             if films_genres:
-                films_genres: str = ''.join([genre.get('name') for genre in films_genres])
+                films_genres: str = ', '.join([genre.get('name') for genre in films_genres])
                 response = f'Фильм {film_name} снят в жанре: {films_genres}'
 
         return response
